@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Poyraz Ataoğlu'nun Satranç Oyunu</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        h1 { color: #eee; margin-bottom: 6px; font-size: 1.1rem; text-align: center; }
+        .status { color: #fff; font-size: 0.95rem; margin: 4px 0; text-align: center; height: 22px; }
+        .stats { display: flex; gap: 15px; color: #aaa; font-size: 0.75rem; margin-top: 4px; }
+        .board-wrapper {
+            width: 100%;
+            max-width: 360px;
+            aspect-ratio: 1;
+            background: #2d2d44;
+            padding: 5px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            width: 100%;
+            height: 100%;
+            border: 2px solid #444;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .square {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(1.4rem, 7.5vw, 2rem);
+            cursor: pointer;
+        }
+        .light { background: #f0d9b5; }
+        .dark { background: #b58863; }
+        .light .piece { color: #5d4a37; }
+        .dark .piece { color: #f0d9b5; }
+        .selected { background: #829769 !important; }
+        .posible { background: #646f40; }
+        .lastmove { background: #cdd26a !important; }
+        .check { background: #e74c3c !important; animation: blink 0.8s infinite; }
+        @keyframes blink { 50% { opacity: 0.6; } }
+        .piece { line-height: 1; pointer-events: none; }
+        .info { color: #aaa; margin-top: 6px; font-size: 0.8rem; text-align: center; }
+        .buttons { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+        button {
+            background: #4a5568;
+            color: white;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        button:active { transform: scale(0.97); }
+        .difficulty { display: flex; gap: 5px; margin-top: 6px; }
+        .difficulty button { padding: 5px 9px; font-size: 0.7rem; background: #3a3a5a; }
+        .difficulty button.active { background: #646f40; }
+        .captured { display: flex; flex-wrap: wrap; gap: 2px; min-height: 22px; justify-content: center; margin-top: 4px; max-width: 360px; }
+        .captured-piece { font-size: 13px; opacity: 0.7; }
+        .promotion-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .promotion-overlay.show { display: flex; }
+        .promotion-choices { display: flex; gap: 12px; font-size: 38px; background: #2d2d44; padding: 18px; border-radius: 12px; }
+        .promotion-choice { cursor: pointer; padding: 8px; border-radius: 8px; transition: background 0.2s; }
+        .promotion-choice:hover { background: #4a5568; }
+    </style>
+</head>
+<body>
+    <h1>♟️ Poyraz Ataoğlu'nun Satranç Oyunu</h1>
+    <div class="status" id="status">Sıra: Beyaz</div>
+    <div class="stats"><span id="moveCount">Hamle: 0</span></div>
+    <div class="difficulty">
+        <button onclick="setDiff('easy')">Kolay</button>
+        <button onclick="setDiff('medium')" class="active">Orta</button>
+        <button onclick="setDiff('hard')">Zor</button>
+    </div>
+    <div class="board-wrapper">
+        <div class="board" id="board"></div>
+    </div>
+    <div class="captured" id="captured-white"></div>
+    <div class="captured" id="captured-black"></div>
+    <div class="buttons">
+        <button onclick="resetGame()">⟲ Yeniden</button>
+        <button onclick="undo()">↶ Geri</button>
+    </div>
+    <div class="info">Taş seç → Hedef kareye bas</div>
+
+    <div class="promotion-overlay" id="promotion-overlay">
+        <div class="promotion-choices" id="promotion-choices"></div>
+    </div>
+
+    <script>
+    const SYMBOLS = { r:'♜', n:'♞', b:'♝', q:'♛', k:'♚', p:'♟', R:'♖', N:'♘', B:'♗', Q:'♕', K:'♔', P:'♙' };
+    let B = [], selected = null, turn = 'white', over = false, history = [];
+    let captured = { white: [], black: [] }, diff = 'medium';
+    let lastF = null, lastT = null, aiThinking = false, moveCount = 0;
+
+    function setDiff(d) { 
+        diff = d; 
+        document.querySelectorAll('.difficulty button').forEach(b => b.classList.remove('active')); 
+        event.target.classList.add('active'); 
+    }
+
+    function initBoard() {
+        B = [
+            ['r','n','b','q','k','b','n','r'],
+            ['p','p','p','p','p','p','p','p'],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            ['P','P','P','P','P','P','P','P'],
+            ['R','N','B','Q','K','B','N','R']
+        ];
+    }
+
+    function resetGame() {
+        initBoard();
+        selected = lastF = lastT = null;
+        turn = 'white'; over = false; history = [];
+        captured = { white: [], black: [] };
+        aiThinking = false; moveCount = 0;
+        document.getElementById('status').textContent = 'Sıra: Beyaz';
+        document.getElementById('moveCount').textContent = 'Hamle: 0';
+        document.getElementById('captured-white').innerHTML = '';
+        document.getElementById('captured-black').innerHTML = '';
+        render();
+    }
+
+    function isW(p) { return p && p === p.toUpperCase(); }
+    function sameColor(a, b) { return a && b && isW(a) === isW(b); }
+    function inBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+
+    function getRawMoves(r, c) {
+        const p = B[r][c];
+        if (!p) return [];
+        const moves = [];
+        const addMove = (tr, tc) => {
+            if (!inBounds(tr, tc)) return false;
+            const t = B[tr][tc];
+            if (t && sameColor(p, t)) return false;
+            moves.push([tr, tc]);
+            return !t;
+        };
+        const pt = p.toLowerCase();
+        if (pt === 'p') {
+            const dir = isW(p) ? -1 : 1;
+            const tr = r + dir;
+            if (inBounds(tr, c) && !B[tr][c]) {
+                moves.push([tr, c]);
+                const start = isW(p) ? 6 : 1;
+                if (r === start && !B[r + 2 * dir][c]) moves.push([r + 2 * dir, c]);
+            }
+            for (const dc of [-1, 1]) {
+                const tc = c + dc;
+                if (inBounds(tr, tc) && B[tr][tc] && !sameColor(p, B[tr][tc])) moves.push([tr, tc]);
+            }
+        } else if (pt === 'r' || pt === 'q') {
+            for (let i = 1; i < 8; i++) { if (!addMove(r + i, c)) break; }
+            for (let i = 1; i < 8; i++) { if (!addMove(r - i, c)) break; }
+            for (let i = 1; i < 8; i++) { if (!addMove(r, c + i)) break; }
+            for (let i = 1; i < 8; i++) { if (!addMove(r, c - i)) break; }
+        }
+        if (pt === 'b' || pt === 'q') {
+            for (let i = 1; i < 8; i++) { if (!addMove(r + i, c + i)) break; }
+            for (let i = 1; i < 8; i++) { if (!addMove(r - i, c - i)) break; }
+            for (let i = 1; i < 8; i++) { if (!addMove(r + i, c - i)) break; }
+            for (let i = 1; i < 8; i++) { if (!addMove(r - i, c + i)) break; }
+        }
+        if (pt === 'n') {
+            for (const [dr, dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+                const tr = r + dr, tc = c + dc;
+                if (inBounds(tr, tc) && (!B[tr][tc] || !sameColor(p, B[tr][tc]))) moves.push([tr, tc]);
+            }
+        }
+        if (pt === 'k') {
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr || dc) {
+                        const tr = r + dr, tc = c + dc;
+                        if (inBounds(tr, tc) && (!B[tr][tc] || !sameColor(p, B[tr][tc]))) moves.push([tr, tc]);
+                    }
+                }
+            }
+        }
+        return moves;
+    }
+
+    function findKing(color) {
+        const k = color === 'white' ? 'K' : 'k';
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (B[r][c] === k) return [r, c];
+            }
+        }
+        return null;
+    }
+
+    function isAttacked(tr, tc, byWhite) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = B[r][c];
+                if (p && isW(p) === byWhite) {
+                    const moves = getRawMoves(r, c);
+                    if (moves.some(([mr, mc]) => mr === tr && mc === tc)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function inCheck(color) {
+        const kp = findKing(color);
+        if (!kp) return false;
+        return isAttacked(kp[0], kp[1], color === 'white' ? false : true);
+    }
+
+    function getLegalMoves(r, c) {
+        const p = B[r][c];
+        if (!p) return [];
+        const color = isW(p) ? 'white' : 'black';
+        const raw = getRawMoves(r, c);
+        return raw.filter(([tr, tc]) => {
+            const backup = B[tr][tc];
+            B[tr][tc] = p;
+            B[r][c] = null;
+            const check = inCheck(color);
+            B[r][c] = p;
+            B[tr][tc] = backup;
+            return !check;
+        });
+    }
+
+    function hasLegalMoves(color) {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = B[r][c];
+                if (p && (isW(p) ? 'white' : 'black') === color) {
+                    if (getLegalMoves(r, c).length > 0) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function render() {
+        const boardEl = document.getElementById('board');
+        boardEl.innerHTML = '';
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const sq = document.createElement('div');
+                const light = (r + c) % 2 === 0;
+                sq.className = 'square ' + (light ? 'light' : 'dark');
+                if (lastF && lastF[0] === r && lastF[1] === c) sq.classList.add('lastmove');
+                if (lastT && lastT[0] === r && lastT[1] === c) sq.classList.add('lastmove');
+                if (selected && selected[0] === r && selected[1] === c) sq.classList.add('selected');
+                const p = B[r][c];
+                if (p) {
+                    sq.innerHTML = `<span class="piece">${SYMBOLS[p]}</span>`;
+                    if ((p === 'k' || p === 'K') && inCheck(turn)) sq.classList.add('check');
+                }
+                sq.dataset.r = r;
+                sq.dataset.c = c;
+                sq.onclick = () => onClick(r, c);
+                boardEl.appendChild(sq);
+            }
+        }
+    }
+
+    function onClick(r, c) {
+        if (over || aiThinking) return;
+        const p = B[r][c];
+        if (selected) {
+            const moves = getLegalMoves(selected[0], selected[1]);
+            if (moves.some(([mr, mc]) => mr === r && mc === c)) {
+                doMove(selected[0], selected[1], r, c);
+            } else {
+                selected = null;
+                if (p && (isW(p) ? 'white' : 'black') === turn) {
+                    selected = [r, c];
+                }
+                render();
+                if (selected) showPosible();
+            }
+        } else if (p && (isW(p) ? 'white' : 'black') === turn) {
+            selected = [r, c];
+            render();
+            showPosible();
+        }
+    }
+
+    function showPosible() {
+        if (!selected) return;
+        const moves = getLegalMoves(selected[0], selected[1]);
+        document.querySelectorAll('.square').forEach(sq => {
+            const r = parseInt(sq.dataset.r), c = parseInt(sq.dataset.c);
+            if (moves.some(([mr, mc]) => mr === r && mc === c)) {
+                sq.classList.add('posible');
+            }
+        });
+    }
+
+    function doMove(fr, fc, tr, tc) {
+        const p = B[fr][fc];
+        const cap = B[tr][tc];
+        if (cap) captured[turn].push(cap);
+        history.push({ f: [fr, fc], t: [tr, tc], p, cap, B: B.map(row => [...row]) });
+        lastF = [fr, fc]; lastT = [tr, tc];
+        B[tr][tc] = p; B[fr][fc] = null;
+        if (p.toLowerCase() === 'p' && (tr === 0 || tr === 7)) {
+            showPromo(tr, tc); return;
+        }
+        selected = null;
+        nextTurn();
+    }
+
+    function showPromo(row, col) {
+        const ol = document.getElementById('promotion-overlay');
+        const ch = document.getElementById('promotion-choices');
+        const color = turn;
+        ch.innerHTML = '';
+        const ps = color === 'white' ? ['Q', 'R', 'B', 'N'] : ['q', 'r', 'b', 'n'];
+        ps.forEach(p => {
+            const sp = document.createElement('span');
+            sp.className = 'promotion-choice';
+            sp.textContent = SYMBOLS[p];
+            sp.onclick = () => { B[row][col] = p; ol.classList.remove('show'); selected = null; nextTurn(); };
+            ch.appendChild(sp);
+        });
+        ol.classList.add('show');
+    }
+
+    function nextTurn() {
+        turn = turn === 'white' ? 'black' : 'white';
+        if (turn === 'white') moveCount++;
+        const st = document.getElementById('status');
+        document.getElementById('moveCount').textContent = 'Hamle: ' + moveCount;
+        if (inCheck(turn)) {
+            if (!hasLegalMoves(turn)) {
+                st.textContent = (turn === 'white' ? 'Siyah' : 'Beyaz') + ' kazandı! 🏆';
+                over = true;
+            } else {
+                st.textContent = (turn === 'white' ? 'Beyaz' : 'Siyah') + ' şah! ⚠️';
+            }
+        } else {
+            if (!hasLegalMoves(turn)) {
+                st.textContent = 'Berabere! 🤝'; over = true;
+            } else {
+                st.textContent = 'Sıra: ' + (turn === 'white' ? 'Beyaz' : 'Siyah');
+            }
+        }
+        document.getElementById('captured-white').innerHTML = captured.white.map(p => `<span class="captured-piece">${SYMBOLS[p]}</span>`).join('');
+        document.getElementById('captured-black').innerHTML = captured.black.map(p => `<span class="captured-piece">${SYMBOLS[p]}</span>`).join('');
+        render();
+        if (turn === 'black' && !over) {
+            aiThinking = true;
+            setTimeout(doAI, 400);
+        }
+    }
+
+    function undo() {
+        if (history.length === 0 || over) return;
+        if (turn === 'white' && history.length >= 2) history.pop();
+        if (history.length === 0) { resetGame(); return; }
+        const last = history.pop();
+        B = last.B.map(row => [...row]);
+        turn = turn === 'white' ? 'black' : 'white';
+        if (turn === 'white') moveCount = Math.max(0, moveCount - 1);
+        selected = null;
+        lastF = last.f; lastT = last.t;
+        if (last.cap) {
+            const col = isW(last.p) ? 'black' : 'white';
+            captured[col] = captured[col].filter(x => x !== last.cap);
+        }
+        document.getElementById('status').textContent = 'Sıra: ' + (turn === 'white' ? 'Beyaz' : 'Siyah');
+        document.getElementById('moveCount').textContent = 'Hamle: ' + moveCount;
+        document.getElementById('captured-white').innerHTML = captured.white.map(p => `<span class="captured-piece">${SYMBOLS[p]}</span>`).join('');
+        document.getElementById('captured-black').innerHTML = captured.black.map(p => `<span class="captured-piece">${SYMBOLS[p]}</span>`).join('');
+        aiThinking = false;
+        render();
+    }
+
+    function doAI() {
+        aiThinking = false;
+        let all = [];
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = B[r][c];
+                if (p && !isW(p)) {
+                    const moves = getLegalMoves(r, c);
+                    for (const [tr, tc] of moves) all.push({ f: [r, c], t: [tr, tc], p });
+                }
+            }
+        }
+        if (all.length === 0) { over = true; return; }
+        let move;
+        const v = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 200 };
+        if (diff === 'easy') {
+            move = all[Math.floor(Math.random() * all.length)];
+        } else if (diff === 'medium') {
+            const caps = all.filter(m => B[m.t[0]][m.t[1]]);
+            move = caps.length ? caps[Math.floor(Math.random() * caps.length)] : all[Math.floor(Math.random() * all.length)];
+        } else {
+            let best = -Infinity, bestMoves = [];
+            for (const m of all) {
+                let s = 0;
+                const t = B[m.t[0]][m.t[1]];
+                if (t) s = v[t.toLowerCase()] * 10;
+                if (m.p.toLowerCase() === 'p' && (isW(m.p) ? m.t[0] === 0 : m.t[0] === 7)) s += 90;
+                // Prefer center control
+                if (m.t[0] >= 3 && m.t[0] <= 4 && m.t[1] >= 3 && m.t[1] <= 4) s += 2;
+                // Check if move gets king in check
+                const backup = B[m.t[0]][m.t[1]];
+                B[m.t[0]][m.t[1]] = m.p;
+                B[m.f[0]][m.f[1]] = null;
+                if (inCheck('white')) s += 5;
+                B[m.f[0]][m.f[1]] = m.p;
+                B[m.t[0]][m.t[1]] = backup;
+                if (s > best) { best = s; bestMoves = [m]; }
+                else if (s >= best - 1) bestMoves.push(m);
+            }
+            move = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+        }
+        doMove(move.f[0], move.f[1], move.t[0], move.t[1]);
+    }
+
+    resetGame();
+    </script>
+</body>
+</html>

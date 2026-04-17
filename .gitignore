@@ -1,0 +1,26 @@
+# Gizli dosyalar
+.openclaw/
+.npmrc
+.wget-hsts
+.bashrc
+.Xdefaults
+.config/
+.npm/
+.npm-global/
+
+# Yedekler ve büyük dosyalar
+backup.zip
+backup-*/
+restore_backup_*/
+*.png
+*.jpg
+*.jpeg
+*.zip
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
+
+# Node logs
+.npm/_logs/
+.npm-global/etc/
