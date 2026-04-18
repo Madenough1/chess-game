@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>🎮 Oyun Platformu</title>
+ 
+ <link rel="preconnect" href="https://fonts.googleapis.com">
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+ <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+ <style>
+ /* Genel Ayarlar */
+ * {
+ margin: 0;
+ padding: 0;
+ box-sizing: border-box;
+ font-family: 'Poppins', sans-serif;
+ }
+
+ /* Dinamik Gradient Arka Plan */
+ body {
+ background: linear-gradient(-45deg, #1e3c72, #2a5298, #6a11cb, #2575fc, #11998e, #38ef7d);
+ background-size: 400% 400%;
+ animation: gradientBG 15s ease infinite;
+ min-height: 100vh;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ color: #ffffff;
+ overflow-x: hidden;
+ padding: 40px 0;
+ }
+
+ @keyframes gradientBG {
+ 0% { background-position: 0% 50%; }
+ 50% { background-position: 100% 50%; }
+ 100% { background-position: 0% 50%; }
+ }
+
+ /* Hero Container */
+ .container {
+ max-width: 1200px;
+ width: 100%;
+ padding: 20px;
+ text-align: center;
+ }
+
+ /* Başlıklar */
+ .header {
+ margin-bottom: 60px;
+ }
+
+ .header h1 {
+ font-size: 3.5rem;
+ font-weight: 700;
+ margin-bottom: 15px;
+ text-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+ letter-spacing: 1px;
+ }
+
+ .header p {
+ font-size: 1.3rem;
+ font-weight: 300;
+ opacity: 0.9;
+ text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+ }
+
+ /* Oyun Grid Yapısı (Flexbox ile ortalama) */
+ .games-grid {
+ display: flex;
+ flex-wrap: wrap;
+ gap: 30px;
+ justify-content: center;
+ }
+
+ /* Glassmorphism Oyun Kartları */
+ .game-card {
+ background: rgba(255, 255, 255, 0.1);
+ backdrop-filter: blur(12px);
+ -webkit-backdrop-filter: blur(12px);
+ border: 1px solid rgba(255, 255, 255, 0.2);
+ border-radius: 24px;
+ padding: 40px 30px;
+ width: 280px;
+ text-decoration: none;
+ color: #ffffff;
+ transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+ position: relative;
+ overflow: hidden;
+ }
+
+ /* Hover Efektleri */
+ .game-card:hover {
+ transform: translateY(-15px) scale(1.05);
+ box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+ background: rgba(255, 255, 255, 0.15);
+ border-color: rgba(255, 255, 255, 0.5);
+ }
+
+ /* Kart İçi İçerik */
+ .icon {
+ font-size: 4.5rem;
+ margin-bottom: 25px;
+ filter: drop-shadow(0 8px 10px rgba(0,0,0,0.3));
+ transition: transform 0.3s ease;
+ }
+
+ .game-card:hover .icon {
+ transform: scale(1.1) rotate(5deg);
+ }
+
+ .game-card h2 {
+ font-size: 1.6rem;
+ font-weight: 600;
+ margin-bottom: 10px;
+ }
+
+ .game-card p {
+ font-size: 1rem;
+ font-weight: 300;
+ opacity: 0.8;
+ }
+
+ /* Responsive Tasarım (Mobil Uyumluluk) */
+ @media (max-width: 992px) {
+ .header h1 {
+ font-size: 3rem;
+ }
+ .game-card {
+ width: calc(33.333% - 30px);
+ min-width: 250px;
+ }
+ }
+
+ @media (max-width: 768px) {
+ .header h1 {
+ font-size: 2.5rem;
+ }
+ .header p {
+ font-size: 1.1rem;
+ }
+ .game-card {
+ width: calc(50% - 15px);
+ padding: 30px 20px;
+ }
+ .icon {
+ font-size: 3.5rem;
+ }
+ }
+
+ @media (max-width: 480px) {
+ .header {
+ margin-bottom: 40px;
+ }
+ .game-card {
+ width: 100%;
+ max-width: 320px;
+ }
+ }
+ </style>
+</head>
+<body>
+
+ <div class="container">
+ <header class="header">
+ <h1>🎮 Oyun Platformu</h1>
+ <p>Altı farklı oyun, tek çatı altında!</p>
+ </header>
+
+ <main class="games-grid">
+ 
+ <a href="satranc.html" class="game-card">
+ <div class="icon">♟️</div>
+ <h2>Satranç</h2>
+ <p>Strateji oyunu</p>
+ </a>
+
+ <a href="tavla.html" class="game-card">
+ <div class="icon">🎲</div>
+ <h2>Tavla</h2>
+ <p>Zar oyunu</p>
+ </a>
+
+ <a href="xox.html" class="game-card">
+ <div class="icon">❌</div>
+ <h2>Tik Tak Toe</h2>
+ <p>Sıfır toplam oyun</p>
+ </a>
+
+ <a href="okey.html" class="game-card">
+ <div class="icon">🀄</div>
+ <h2>Okey</h2>
+ <p>Klasik Türk oyunu</p>
+ </a>
+
+ <a href="snake.html" class="game-card">
+ <div class="icon">🐍</div>
+ <h2>Yılan Oyunu</h2>
+ <p>Retro arcade</p>
+ </a>
+
+ <a href="uno.html" class="game-card">
+ <div class="icon">🃏</div>
+ <h2>UNO</h2>
+ <p>Klasik kart oyunu</p>
+ </a>
+
+ </main>
+ </div>
+
+</body>
+</html>

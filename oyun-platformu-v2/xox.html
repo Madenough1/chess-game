@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ <title>Modern XOX Oyunu - Master Versiyon</title>
+ <style>
+ :root {
+ --color-x: #3498db;
+ --color-o: #e74c3c;
+ --color-win: #2ecc71;
+ --bg-gradient-1: #1e293b;
+ --bg-gradient-2: #0f172a;
+ --board-bg: rgba(255, 255, 255, 0.1);
+ --cell-bg: #1e293b;
+ --text-color: #f8fafc;
+ }
+
+ * {
+ box-sizing: border-box;
+ margin: 0;
+ padding: 0;
+ user-select: none;
+ -webkit-tap-highlight-color: transparent;
+ }
+
+ body {
+ font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+ background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2));
+ color: var(--text-color);
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ min-height: 100vh;
+ padding: 20px;
+ }
+
+ .home-btn {
+ position: absolute;
+ top: 20px;
+ right: 20px;
+ background: rgba(255, 255, 255, 0.1);
+ color: var(--text-color);
+ border: 1px solid rgba(255, 255, 255, 0.2);
+ padding: 10px 15px;
+ border-radius: 8px;
+ cursor: pointer;
+ font-size: 14px;
+ font-weight: 600;
+ transition: all 0.3s ease;
+ text-decoration: none;
+ display: flex;
+ align-items: center;
+ gap: 5px;
+ }
+
+ .home-btn:hover, .home-btn:focus {
+ background: rgba(255, 255, 255, 0.2);
+ transform: translateY(-2px);
+ outline: 2px solid var(--color-x);
+ outline-offset: 2px;
+ }
+
+ h1 {
+ font-size: 2.5rem;
+ margin-top: 40px;
+ margin-bottom: 20px;
+ letter-spacing: 2px;
+ text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+ }
+
+ .controls {
+ display: flex;
+ gap: 10px;
+ margin-bottom: 20px;
+ }
+
+ .mode-btn {
+ background: rgba(255, 255, 255, 0.1);
+ border: 1px solid rgba(255, 255, 255, 0.2);
+ color: var(--text-color);
+ padding: 8px 16px;
+ border-radius: 20px;
+ cursor: pointer;
+ font-size: 14px;
+ transition: all 0.3s ease;
+ }
+
+ .mode-btn:focus {
+ outline: 2px solid var(--color-win);
+ outline-offset: 2px;
+ }
+
+ .mode-btn.active {
+ background: var(--color-x);
+ border-color: var(--color-x);
+ box-shadow: 0 0 15px rgba(52, 152, 219, 0.4);
+ }
+
+ .score-board {
+ display: flex;
+ gap: 30px;
+ margin-bottom: 30px;
+ background: rgba(0, 0, 0, 0.2);
+ padding: 15px 30px;
+ border-radius: 15px;
+ box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+ }
+
+ .score-item {
+ text-align: center;
+ font-size: 1.2rem;
+ font-weight: bold;
+ }
+
+ .score-x { color: var(--color-x); }
+ .score-o { color: var(--color-o); }
+ .score-draw { color: #94a3b8; }
+
+ .board {
+ display: grid;
+ grid-template-columns: repeat(3, 1fr);
+ gap: 10px;
+ background: var(--board-bg);
+ padding: 10px;
+ border-radius: 15px;
+ width: 100%;
+ max-width: 400px;
+ min-width: 300px;
+ aspect-ratio: 1/1;
+ box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+ }
+
+ .cell {
+ background: var(--cell-bg);
+ border-radius: 10px;
+ display: flex;
+ justify-content: center;
+ align-items: center;
+ font-size: 4rem;
+ font-weight: bold;
+ cursor: pointer;
+ transition: all 0.2s ease;
+ box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
+ }
+
+ .cell:hover:empty {
+ background: rgba(255, 255, 255, 0.05);
+ }
+
+ .cell:focus {
+ outline: 3px solid var(--color-x);
+ outline-offset: -3px;
+ background: rgba(255, 255, 255, 0.05);
+ }
+
+ .cell.x {
+ color: var(--color-x);
+ animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+ }
+
+ .cell.o {
+ color: var(--color-o);
+ animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+ }
+
+ .cell.win {
+ background: rgba(46, 204, 113, 0.2);
+ color: var(--color-win);
+ text-shadow: 0 0 15px var(--color-win);
+ animation: pulseWin 1s infinite alternate;
+ }
+
+ .status-message {
+ margin-top: 25px;
+ font-size: 1.5rem;
+ font-weight: bold;
+ height: 35px;
+ text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+ }
+
+ .restart-btn {
+ margin-top: 20px;
+ background: var(--text-color);
+ color: var(--bg-gradient-1);
+ border: none;
+ padding: 12px 30px;
+ font-size: 1.1rem;
+ font-weight: bold;
+ border-radius: 25px;
+ cursor: pointer;
+ transition: all 0.3s ease;
+ box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+ }
+
+ .restart-btn:hover, .restart-btn:focus {
+ transform: scale(1.05);
+ box-shadow: 0 6px 20px rgba(255,255,255,0.2);
+ outline: none;
+ }
+
+ @keyframes popIn {
+ 0% { transform: scale(0.5); opacity: 0; }
+ 100% { transform: scale(1); opacity: 1; }
+ }
+
+ @keyframes pulseWin {
+ 0% { transform: scale(1); }
+ 100% { transform: scale(1.05); box-shadow: inset 0 0 20px rgba(46, 204, 113, 0.4); }
+ }
+
+ @media (max-width: 480px) {
+ .cell { font-size: 3rem; }
+ h1 { font-size: 2rem; margin-top: 60px; }
+ .score-board { padding: 10px 20px; gap: 20px; }
+ }
+ </style>
+</head>
+<body>
+
+ <button id="home-btn" class="home-btn" onclick="window.location.href='../index.html'" tabindex="0">
+ 🏠 Ana Sayfa
+ </button>
+
+ <h1>X O X</h1>
+
+ <div class="controls">
+ <button class="mode-btn active" onclick="setMode('PvP')" id="btn-pvp" tabindex="0">👥 İki Oyuncu</button>
+ <button class="mode-btn" onclick="setMode('PvE')" id="btn-pve" tabindex="0">💻 Bilgisayara Karşı</button>
+ </div>
+
+ <div class="score-board">
+ <div class="score-item score-x">X<br><span id="scoreX">0</span></div>
+ <div class="score-item score-draw">Berabere<br><span id="scoreDraw">0</span></div>
+ <div class="score-item score-o">O<br><span id="scoreO">0</span></div>
+ </div>
+
+ <div class="board" id="board" role="grid">
+ <div class="cell" data-index="0" tabindex="0" role="gridcell" aria-label="Hücre 0"></div>
+ <div class="cell" data-index="1" tabindex="0" role="gridcell" aria-label="Hücre 1"></div>
+ <div class="cell" data-index="2" tabindex="0" role="gridcell" aria-label="Hücre 2"></div>
+ <div class="cell" data-index="3" tabindex="0" role="gridcell" aria-label="Hücre 3"></div>
+ <div class="cell" data-index="4" tabindex="0" role="gridcell" aria-label="Hücre 4"></div>
+ <div class="cell" data-index="5" tabindex="0" role="gridcell" aria-label="Hücre 5"></div>
+ <div class="cell" data-index="6" tabindex="0" role="gridcell" aria-label="Hücre 6"></div>
+ <div class="cell" data-index="7" tabindex="0" role="gridcell" aria-label="Hücre 7"></div>
+ <div class="cell" data-index="8" tabindex="0" role="gridcell" aria-label="Hücre 8"></div>
+ </div>
+
+ <div class="status-message" id="statusMessage" aria-live="polite">Sıra: X</div>
+ 
+ <button class="restart-btn" onclick="resetGame(false)" tabindex="0">Yeniden Başlat</button>
+
+ <script>
+ // Ses API
+ let audioCtx = null;
+ 
+ function initAudio() {
+ if (!audioCtx) {
+ audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+ }
+ if (audioCtx.state === 'suspended') {
+ audioCtx.resume();
+ }
+ }
+
+ function playSound(type) {
+ initAudio();
+ const oscillator = audioCtx.createOscillator();
+ const gainNode = audioCtx.createGain();
+ 
+ oscillator.connect(gainNode);
+ gainNode.connect(audioCtx.destination);
+ 
+ if (type === 'click') {
+ oscillator.type = 'sine';
+ oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+ oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.05);
+ gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+ gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+ oscillator.start(audioCtx.currentTime);
+ oscillator.stop(audioCtx.currentTime + 0.1);
+ } else if (type === 'win') {
+ oscillator.type = 'triangle';
+ oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+ oscillator.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.2);
+ gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+ gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+ oscillator.start(audioCtx.currentTime);
+ oscillator.stop(audioCtx.currentTime + 0.5);
+ }
+ }
+
+ // Oyun Değişkenleri
+ let board = ["", "", "", "", "", "", "", "", ""];
+ let startingPlayer = "X"; // İlk hamle rotasyonu için
+ let currentPlayer = "X";
+ let gameActive = true;
+ let gameMode = "PvP"; 
+ let isWaitingForCPU = false; 
+ 
+ let scores = { X: 0, O: 0, Draw: 0 };
+
+ const winningConditions = [
+ [0, 1, 2], [3, 4, 5], [6, 7, 8],
+ [0, 3, 6], [1, 4, 7], [2, 5, 8],
+ [0, 4, 8], [2, 4, 6] 
+ ];
+
+ const cells = document.querySelectorAll('.cell');
+ const statusMessage = document.getElementById('statusMessage');
+
+ // Event Listeners
+ cells.forEach(cell => {
+ cell.addEventListener('click', handleCellClick);
+ cell.addEventListener('keydown', (e) => {
+ if (e.key === 'Enter' || e.key === ' ') {
+ e.preventDefault(); 
+ handleCellClick(e);
+ }
+ });
+ });
+
+ function setMode(mode) {
+ gameMode = mode;
+ document.getElementById('btn-pvp').classList.toggle('active', mode === 'PvP');
+ document.getElementById('btn-pve').classList.toggle('active', mode === 'PvE');
+ 
+ scores = { X: 0, O: 0, Draw: 0 };
+ updateScoreBoard();
+ resetGame(true); // Mod değiştiğinde her zaman X başlasın
+ }
+
+ function handleCellClick(e) {
+ const clickedCell = e.target;
+ const cellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+ if (board[cellIndex] !== "" || !gameActive || isWaitingForCPU) return;
+
+ makeMove(cellIndex, currentPlayer);
+
+ if (gameMode === 'PvE' && gameActive && currentPlayer === 'O') {
+ isWaitingForCPU = true; 
+ statusMessage.innerText = "Bilgisayar Düşünüyor...";
+ setTimeout(makeCPUMove, 500); 
+ }
+ }
+
+ function makeMove(index, player) {
+ board[index] = player;
+ cells[index].innerText = player;
+ cells[index].classList.add(player.toLowerCase());
+ 
+ // Dinamik ARIA Güncellemesi (A11y Düzeltmesi)
+ cells[index].setAttribute('aria-label', `Hücre ${index}, ${player} ile dolu`);
+ 
+ playSound('click');
+ checkResult();
+ }
+
+ function checkResult() {
+ let roundWon = false;
+ let winningCells = [];
+
+ for (let i = 0; i < winningConditions.length; i++) {
+ const [a, b, c] = winningConditions[i];
+ if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+ roundWon = true;
+ winningCells = [a, b, c];
+ break;
+ }
+ }
+
+ if (roundWon) {
+ statusMessage.innerHTML = `<span style="color: var(--color-${currentPlayer.toLowerCase()})">${currentPlayer} Kazandı!</span>`;
+ gameActive = false;
+ scores[currentPlayer]++;
+ updateScoreBoard();
+ playSound('win');
+ 
+ winningCells.forEach(index => {
+ cells[index].classList.add('win');
+ });
+ return;
+ }
+
+ let roundDraw = !board.includes("");
+ if (roundDraw) {
+ statusMessage.innerText = "Oyun Berabere!";
+ gameActive = false;
+ scores.Draw++;
+ updateScoreBoard();
+ return;
+ }
+
+ currentPlayer = currentPlayer === "X" ? "O" : "X";
+ if (!isWaitingForCPU || currentPlayer === 'X') {
+ statusMessage.innerText = `Sıra: ${currentPlayer}`;
+ }
+ }
+
+ // --- YAPAY ZEKA (Alpha-Beta Budamalı Minimax) ---
+
+ function makeCPUMove() {
+ if (!gameActive) {
+ isWaitingForCPU = false;
+ return;
+ }
+
+ let bestScore = -Infinity;
+ let moveIndex = -1;
+ let emptySpaces = board.filter(s => s === "").length;
+
+ // Ölü Kod Düzeltmesi: Mantık ayrıştırıldı
+ if (emptySpaces === 9) {
+ moveIndex = [0, 2, 4, 6, 8][Math.floor(Math.random() * 5)]; 
+ } else if (emptySpaces === 8) {
+ moveIndex = board[4] === "" ? 4 : [0, 2, 6, 8][Math.floor(Math.random() * 4)];
+ } else {
+ for (let i = 0; i < 9; i++) {
+ if (board[i] === "") {
+ board[i] = 'O'; 
+ // Alpha-Beta başlangıç değerleri: -Infinity, Infinity
+ let score = minimax(board, 0, false, -Infinity, Infinity); 
+ board[i] = ""; 
+ if (score > bestScore) {
+ bestScore = score;
+ moveIndex = i;
+ }
+ }
+ }
+ }
+
+ if (moveIndex !== -1) {
+ makeMove(moveIndex, 'O');
+ }
+ 
+ isWaitingForCPU = false; 
+ }
+
+ // Alpha-Beta Budaması Eklenmiş Minimax
+ function minimax(newBoard, depth, isMaximizing, alpha, beta) {
+ let result = checkWinnerForMinimax(newBoard);
+ if (result === 'O') return 10 - depth; 
+ if (result === 'X') return depth - 10; 
+ if (result === 'tie') return 0; 
+
+ if (isMaximizing) {
+ let bestScore = -Infinity;
+ for (let i = 0; i < 9; i++) {
+ if (newBoard[i] === "") {
+ newBoard[i] = 'O';
+ let score = minimax(newBoard, depth + 1, false, alpha, beta);
+ newBoard[i] = "";
+ bestScore = Math.max(score, bestScore);
+ alpha = Math.max(alpha, score);
+ if (beta <= alpha) break; // Alpha-Beta Budaması
+ }
+ }
+ return bestScore;
+ } else {
+ let bestScore = Infinity;
+ for (let i = 0; i < 9; i++) {
+ if (newBoard[i] === "") {
+ newBoard[i] = 'X';
+ let score = minimax(newBoard, depth + 1, true, alpha, beta);
+ newBoard[i] = "";
+ bestScore = Math.min(score, bestScore);
+ beta = Math.min(beta, score);
+ if (beta <= alpha) break; // Alpha-Beta Budaması
+ }
+ }
+ return bestScore;
+ }
+ }
+
+ function checkWinnerForMinimax(tempBoard) {
+ for (let i = 0; i < winningConditions.length; i++) {
+ const [a, b, c] = winningConditions[i];
+ if (tempBoard[a] && tempBoard[a] === tempBoard[b] && tempBoard[a] === tempBoard[c]) {
+ return tempBoard[a];
+ }
+ }
+ if (!tempBoard.includes("")) return 'tie';
+ return null;
+ }
+
+ function updateScoreBoard() {
+ document.getElementById('scoreX').innerText = scores.X;
+ document.getElementById('scoreO').innerText = scores.O;
+ document.getElementById('scoreDraw').innerText = scores.Draw;
+ }
+
+ // İlk Hamle Rotasyonu Düzeltmesi
+ function resetGame(isNewMode = false) {
+ if (isNewMode) {
+ startingPlayer = "X";
+ } else {
+ startingPlayer = startingPlayer === "X" ? "O" : "X";
+ }
+ 
+ currentPlayer = startingPlayer;
+ board = ["", "", "", "", "", "", "", "", ""];
+ gameActive = true;
+ isWaitingForCPU = false;
+ statusMessage.innerText = `Sıra: ${currentPlayer}`;
+ 
+ cells.forEach((cell, index) => {
+ cell.innerText = "";
+ cell.className = "cell"; 
+ cell.setAttribute('aria-label', `Hücre ${index}`); // A11y Sıfırlaması
+ });
+
+ // Eğer oyun sıfırlandığında sıra CPU'daysa ilk hamleyi o yapsın
+ if (gameMode === 'PvE' && currentPlayer === 'O') {
+ isWaitingForCPU = true;
+ statusMessage.innerText = "Bilgisayar Başlıyor...";
+ setTimeout(makeCPUMove, 600);
+ }
+ }
+ </script>
+</body>
+</html>
