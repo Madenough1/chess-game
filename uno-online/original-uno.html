@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --red: #E23E36;
+            --blue: #005A9E;
+            --green: #3C9142;
+            --yellow: #F8DA1C;
+            --yellow-text: #222;
+        }
+
+        body { font-family: 'Nunito', sans-serif; }
+        .font-display { font-family: 'Bebas Neue', cursive; }
+
+        /* Kart stilleri */
+        .card-playable {
+            transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), box-shadow 0.18s ease, filter 0.18s ease;
+            cursor: pointer;
+        }
+        .card-playable:hover {
+            transform: translateY(-20px) scale(1.08) rotate(-2deg);
+            z-index: 30;
+            filter: brightness(1.1);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+        .card-disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            filter: grayscale(50%);
+            transition: opacity 0.2s;
+        }
+
+        /* Kart renkleri */
+        .c-red    { background: var(--red); color: white; }
+        .c-blue   { background: var(--blue); color: white; }
+        .c-green  { background: var(--green); color: white; }
+        .c-yellow { background: var(--yellow); color: var(--yellow-text); }
+        .c-black  { background: #1a1a2e; color: white; }
+
+        /* Deste 3D efekti */
+        .deck-3d {
+            box-shadow:
+                -2px 2px 0 #8b7355,
+                -4px 4px 0 #7a6248,
+                -6px 6px 0 #6b5340,
+                -8px 8px 0 #5c4433,
+                0 15px 40px rgba(0,0,0,0.6);
+        }
+
+        /* Aktif oyuncu parlama */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 8px 2px rgba(250,204,21,0.4); }
+            50% { box-shadow: 0 0 20px 6px rgba(250,204,21,0.9); }
+        }
+        .active-glow { animation: pulse-glow 1.8s ease-in-out infinite; }
+
+        /* Kart oynanma animasyonu */
+        @keyframes card-fly {
+            0% { transform: scale(1.2) translateY(-10px); opacity: 0.7; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .card-played { animation: card-fly 0.3s ease-out; }
+
+        /* UNO butonu */
+        @keyframes uno-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(220,38,38,0.6); }
+            50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(220,38,38,1); }
+        }
+        .uno-animate { animation: uno-pulse 0.9s ease-in-out infinite; }
+
+        /* Sıra rozeti */
+        @keyframes badge-glow {
+            0%, 100% { box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+            50% { box-shadow: 0 0 18px rgba(34,197,94,1); }
+        }
+        .badge-glow { animation: badge-glow 1.5s ease-in-out infinite; }
+
+        /* Kart binen yelpaze */
+        .card-overlap { margin-left: -22px; }
+        .card-overlap:first-child { margin-left: 0; }
+        @media (min-width: 768px) {
+            .card-overlap { margin-left: -30px; }
+        }
+
+        /* Scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Bildirim toast */
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateX(20px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        .toast-visible { animation: toast-in 0.3s ease-out; }
+
+        /* Renk seçici buton hover */
+        .color-btn { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .color-btn:hover { transform: scale(1.08); box-shadow: 0 0 20px rgba(255,255,255,0.4); }
+        .color-btn.selected { outline: 4px solid white; transform: scale(1.1); }
+
+        /* Tablo arka planı */
+        .table-felt {
+            background:
+                radial-gradient(ellipse at 50% 50%, #2d6a4f 0%, #1b4332 60%, #0d2b1e 100%);
+        }
+
+        /* Oyuncu avatar */
+        .avatar-human { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .avatar-bot1   { background: linear-gradient(135deg, #ef4444, #991b1b); }
+        .avatar-bot2   { background: linear-gradient(135deg, #f59e0b, #b45309); }
+        .avatar-bot3   { background: linear-gradient(135deg, #10b981, #065f46); }
+
+        /* Log */
+        .log-entry:last-child { color: white; font-weight: 700; }
+        .log-entry { color: #a8a29e; font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 3px; margin-bottom: 3px; }
+
+        /* Deste sayacı */
+        .deck-counter {
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Kart iç oval */
+        .card-oval {
+            background: rgba(255,255,255,0.18);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* AI düşünce göstergesi */
+        @keyframes think-dot {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        .think-dot { animation: think-dot 1.2s ease-in-out infinite; }
+        .think-dot:nth-child(2) { animation-delay: 0.2s; }
+        .think-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        /* Yön oku animasyonu */
+        @keyframes rotate-cw  { from { transform: rotate(0deg);   } to { transform: rotate(360deg);  } }
+        @keyframes rotate-ccw { from { transform: rotate(0deg);   } to { transform: rotate(-360deg); } }
+        .spin-cw  { animation: rotate-cw  3s linear infinite; }
+        .spin-ccw { animation: rotate-ccw 3s linear infinite; }
+
+        /* Kazanma ekranı confetti */
+        @keyframes confetti-fall {
+            0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100px) rotate(720deg); opacity: 0; }
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 8px; height: 8px;
+            border-radius: 2px;
+            animation: confetti-fall 1.5s ease-in forwards;
+        }
+    </style>
+</head>
+<body class="bg-stone-900 text-stone-100 h-screen w-screen overflow-hidden flex flex-col select-none relative">
+
+    <!-- ═══════════════════════════════════════ KURULUM EKRANI ═══ -->
+    <div id="setup-screen" class="absolute inset-0 z-50 flex items-center justify-center bg-stone-900 transition-opacity duration-400">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
+            <!-- Başlık bandı -->
+            <div class="bg-gradient-to-br from-red-600 to-red-800 p-8 text-center relative overflow-hidden">
+                <div class="absolute inset-0 opacity-10" style="background: repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%) 0/12px 12px;"></div>
+                <h1 class="font-display text-8xl text-white tracking-wide drop-shadow-2xl relative z-10">UNO</h1>
+                <p class="text-red-200 font-semibold text-sm mt-1 relative z-10 tracking-widest uppercase">Masa Oyunu</p>
+            </div>
+
+            <div class="p-8">
+                <label class="block text-sm font-bold text-stone-500 mb-4 uppercase tracking-wider text-center">Kaç kişi oynayacak?</label>
+                <div class="flex justify-center gap-3 mb-8">
+                    <button class="player-count-btn w-14 h-14 rounded-2xl border-2 border-stone-200 text-stone-600 text-xl font-bold transition-all hover:border-red-400 hover:text-red-500 hover:bg-red-50" data-count="2">2</button>
+                    <button class="player-count-btn w-14 h-14 rounded-2xl border-2 border-stone-200 text-stone-600 text-xl font-bold transition-all hover:border-red-400 hover:text-red-500 hover:bg-red-50" data-count="3">3</button>
+                    <button class="player-count-btn selected-count w-14 h-14 rounded-2xl border-2 border-red-500 text-red-600 bg-red-50 text-xl font-bold shadow-md" data-count="4">4</button>
+                </div>
+
+                <button id="start-btn" class="w-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-black py-4 rounded-2xl transition-all shadow-lg text-lg tracking-wide uppercase">
+                    🃏 Masaya Otur
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ RENK SEÇİM MODALI ═══ -->
+    <div id="color-picker-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm">
+        <div class="bg-stone-900 border border-stone-700 p-6 rounded-3xl shadow-2xl text-center max-w-xs w-full mx-4">
+            <h2 class="text-xl font-black text-white mb-1">Renk Seç</h2>
+            <p class="text-stone-400 text-sm mb-5">Joker sonrası aktif rengi belirle</p>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <button class="color-btn c-red   h-20 rounded-2xl text-2xl font-black shadow-lg border-2 border-transparent" data-color="red">🔴 Kırmızı</button>
+                <button class="color-btn c-blue  h-20 rounded-2xl text-2xl font-black shadow-lg border-2 border-transparent" data-color="blue">🔵 Mavi</button>
+                <button class="color-btn c-green h-20 rounded-2xl text-2xl font-black shadow-lg border-2 border-transparent" data-color="green">🟢 Yeşil</button>
+                <button class="color-btn c-yellow h-20 rounded-2xl text-2xl font-black shadow-lg border-2 border-transparent text-stone-800" data-color="yellow">🟡 Sarı</button>
+            </div>
+            <button id="cancel-color-btn" class="w-full bg-stone-700 hover:bg-stone-600 text-stone-300 font-bold py-3 rounded-xl transition-colors text-sm">
+                ← Geri Al (Kart Oynama)
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ OYUN BİTİŞ EKRANI ═══ -->
+    <div id="game-over-screen" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md">
+        <div id="confetti-container" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
+        <div class="bg-stone-900 border border-stone-700 p-8 rounded-3xl shadow-2xl text-center max-w-md w-full mx-4 relative z-10">
+            <div id="winner-emoji" class="text-6xl mb-4">🏆</div>
+            <h1 class="font-display text-5xl mb-2" id="winner-text">Kazandınız!</h1>
+            <p class="text-stone-400 mb-6 font-medium" id="winner-subtext">Tüm kartlardan başarıyla kurtuldunuz.</p>
+
+            <button onclick="location.reload()" class="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl transition-colors shadow-lg text-lg uppercase tracking-wide">
+                🔄 Yeni Oyun
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ ANA OYUN MASASI ═══ -->
+    <div id="game-board" class="flex-1 w-full h-full relative opacity-0 transition-opacity duration-700 hidden table-felt">
+
+        <!-- AI Düşünce Göstergesi -->
+        <div id="ai-thinking" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur rounded-2xl px-6 py-4 z-40 flex items-center gap-3 pointer-events-none">
+            <div class="flex gap-1.5">
+                <div class="think-dot w-2 h-2 rounded-full bg-white"></div>
+                <div class="think-dot w-2 h-2 rounded-full bg-white"></div>
+                <div class="think-dot w-2 h-2 rounded-full bg-white"></div>
+            </div>
+            <span id="ai-thinking-name" class="text-sm font-semibold text-stone-300">Bot düşünüyor...</span>
+        </div>
+
+        <!-- Sol üst: Bilgi Paneli -->
+        <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+            <div class="bg-black/50 backdrop-blur rounded-xl p-3 border border-white/10 shadow-lg">
+                <span class="text-[10px] text-stone-400 uppercase tracking-wider font-bold block mb-1">Oyun Yönü</span>
+                <div class="flex items-center gap-2">
+                    <span id="direction-arrow" class="text-xl spin-cw inline-block">↻</span>
+                    <span id="direction-text" class="text-sm font-bold text-white">Saat Yönü</span>
+                </div>
+            </div>
+            <div class="bg-black/50 backdrop-blur rounded-xl p-3 border border-white/10 shadow-lg">
+                <span class="text-[10px] text-stone-400 uppercase tracking-wider font-bold block mb-1">Aktif Renk</span>
+                <div class="flex items-center gap-2">
+                    <div id="color-dot" class="w-6 h-6 rounded-full border-2 border-white shadow c-red"></div>
+                    <span id="color-name" class="text-sm font-bold text-white">Kırmızı</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ üst: Log -->
+        <div id="action-log" class="hidden md:block absolute top-4 right-4 w-60 bg-black/50 backdrop-blur rounded-xl p-3 border border-white/10 z-10 max-h-36 overflow-y-auto no-scrollbar">
+            <p class="text-[10px] text-stone-400 uppercase tracking-wider font-bold mb-2">Hamle Geçmişi</p>
+        </div>
+
+        <!-- RAKİP KONUMLARI -->
+        <div id="pos-top"   class="absolute top-4   left-1/2 -translate-x-1/2 z-10"></div>
+        <div id="pos-left"  class="absolute left-4  top-1/2  -translate-y-1/2  z-10"></div>
+        <div id="pos-right" class="absolute right-4 top-1/2  -translate-y-1/2  z-10"></div>
+
+        <!-- MASA ORTASI -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <!-- Masa örtüsü dairesi -->
+            <div class="w-56 h-56 md:w-72 md:h-72 rounded-full border-4 border-white/10 absolute opacity-30"
+                 style="background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);"></div>
+
+            <div class="flex items-center gap-8 md:gap-14 pointer-events-auto relative z-10">
+                <!-- Çekme Destesi -->
+                <div class="flex flex-col items-center gap-2">
+                    <div id="draw-deck" class="w-20 h-28 md:w-28 md:h-40 c-black rounded-xl border-[3px] border-white/70 flex items-center justify-center cursor-pointer deck-3d hover:-translate-y-2 transition-transform relative">
+                        <span class="font-display text-3xl md:text-4xl text-red-500 tracking-wider drop-shadow-lg">UNO</span>
+                    </div>
+                    <div class="deck-counter rounded-full px-3 py-1 flex items-center gap-2">
+                        <span class="text-xs text-stone-400">Deste:</span>
+                        <span id="deck-count" class="text-xs font-black text-white">108</span>
+                    </div>
+                    <button id="draw-btn" class="bg-white/15 hover:bg-white/25 active:bg-white/10 text-white font-bold py-1.5 px-5 rounded-full transition-colors text-xs border border-white/20 shadow">
+                        Kart Çek
+                    </button>
+                </div>
+
+                <!-- Atılan Kart -->
+                <div class="flex flex-col items-center gap-2">
+                    <div id="discard-pile" class="w-20 h-28 md:w-28 md:h-40 c-red rounded-xl border-[3px] border-white/70 shadow-2xl flex flex-col items-center justify-center relative transition-all duration-300"></div>
+                    <span class="text-xs text-stone-400 font-semibold">Son Atılan</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ALT ALAN: OYUNCU -->
+        <div class="absolute bottom-0 w-full flex flex-col items-center pb-4 z-20">
+            <!-- Aksiyon Butonları -->
+            <div class="flex items-center gap-3 mb-3">
+                <button id="uno-call-btn" class="hidden bg-red-600 text-white font-black italic px-8 py-2.5 rounded-full border-4 border-white text-lg shadow-2xl uno-animate">
+                    UNO!
+                </button>
+                <button id="pass-btn" class="hidden bg-stone-600/80 hover:bg-stone-500 text-white font-bold px-5 py-2.5 rounded-full border border-stone-500/50 shadow-lg transition-all text-sm backdrop-blur">
+                    Pas Geç
+                </button>
+            </div>
+
+            <!-- Kart Alanı -->
+            <div class="bg-black/50 backdrop-blur-md px-6 py-3 rounded-3xl border border-white/10 shadow-2xl max-w-full">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <div class="flex items-center gap-2">
+                        <div id="human-avatar" class="w-8 h-8 rounded-full avatar-human border-2 border-white shadow flex items-center justify-center font-black text-white text-sm">S</div>
+                        <span class="font-bold text-white text-sm">Senin Kartların</span>
+                        <span class="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full" id="player-card-count">0</span>
+                    </div>
+                    <span id="human-turn-badge" class="hidden text-xs bg-green-500 text-white font-black px-3 py-1 rounded-full badge-glow">● Senin Sıran</span>
+                </div>
+                <div id="player-hand" class="flex overflow-x-auto no-scrollbar py-3 px-1 min-h-[140px] md:min-h-[160px] items-end justify-center w-[88vw] md:w-[65vw]"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  SABİTLER
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const COLORS = ['red','blue','green','yellow'];
+    const VALUES = ['0','1','2','3','4','5','6','7','8','9','skip','reverse','draw2'];
+
+    const COLOR_CLASS = { red:'c-red', blue:'c-blue', green:'c-green', yellow:'c-yellow', black:'c-black' };
+    const COLOR_TR    = { red:'Kırmızı', blue:'Mavi', green:'Yeşil', yellow:'Sarı', black:'Siyah' };
+    const SYMBOL      = { skip:'⊘', reverse:'⇄', draw2:'+2', wild:'🎨', wild4:'+4' };
+
+    const AVATAR_CLASS = ['avatar-human','avatar-bot1','avatar-bot2','avatar-bot3'];
+    const BOT_DELAY    = 1400; // ms
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  DURUM (STATE)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let G = {
+        numPlayers: 4,
+        players: [],
+        deck: [],
+        discardPile: [],
+        currentIdx: 0,
+        direction: 1,
+        currentColor: '',
+        active: false,
+        logs: [],
+        drewThisTurn: false,   // BUG FIX: Pas geç butonu yönetimi
+        pendingPlay: null      // { playerIndex, cardIndex }
+    };
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  DOM
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const $ = id => document.getElementById(id);
+    const setupScreen    = $('setup-screen');
+    const gameBoard      = $('game-board');
+    const colorModal     = $('color-picker-modal');
+    const gameOverScreen = $('game-over-screen');
+    const playerHandEl   = $('player-hand');
+    const discardEl      = $('discard-pile');
+    const drawDeckEl     = $('draw-deck');
+    const drawBtn        = $('draw-btn');
+    const passBtn        = $('pass-btn');
+    const unoBtn         = $('uno-call-btn');
+    const deckCount      = $('deck-count');
+    const actionLog      = $('action-log');
+    const humanTurnBadge = $('human-turn-badge');
+    const humanAvatar    = $('human-avatar');
+    const aiThinking     = $('ai-thinking');
+    const aiThinkingName = $('ai-thinking-name');
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  KURULUM EKRANI
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    document.querySelectorAll('.player-count-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            document.querySelectorAll('.player-count-btn').forEach(b => {
+                b.classList.remove('selected-count','border-red-500','text-red-600','bg-red-50','shadow-md');
+                b.classList.add('border-stone-200','text-stone-600');
+            });
+            e.currentTarget.classList.add('selected-count','border-red-500','text-red-600','bg-red-50','shadow-md');
+            e.currentTarget.classList.remove('border-stone-200','text-stone-600');
+            G.numPlayers = parseInt(e.currentTarget.dataset.count);
+        });
+    });
+
+    $('start-btn').addEventListener('click', () => {
+        setupScreen.style.opacity = '0';
+        setTimeout(() => {
+            setupScreen.classList.add('hidden');
+            gameBoard.classList.remove('hidden');
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                gameBoard.style.opacity = '1';
+            }));
+            initGame();
+        }, 300);
+    });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  RENK SEÇİMİ
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            const color = e.currentTarget.dataset.color;
+            colorModal.classList.add('hidden');
+            if (G.pendingPlay) {
+                const { playerIndex, cardIndex } = G.pendingPlay;
+                G.pendingPlay = null;
+                playCard(playerIndex, cardIndex, color);
+            }
+        });
+    });
+
+    $('cancel-color-btn').addEventListener('click', () => {
+        colorModal.classList.add('hidden');
+        G.pendingPlay = null;
+        updateUI();
+    });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  KART ÇEKME & PAS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function handleDraw() {
+        if (!G.active || G.pendingPlay) return;
+        if (G.players[G.currentIdx].id !== 0) return;
+        if (G.drewThisTurn) return; // Zaten çektiyse ikinci kez çekemesin
+
+        drawCards(0, 1);
+        addLog('Yerden bir kart çektin.');
+        G.drewThisTurn = true;
+
+        // Çekilen kart oynanabilirse oynayabilir, yoksa pas geç aktif olur
+        const human = G.players[0];
+        const drawnCard = human.hand[human.hand.length - 1];
+        if (!isValid(drawnCard)) {
+            // Pas geçmek zorunda
+            passBtn.classList.remove('hidden');
+        }
+        updateUI();
+    }
+
+    drawBtn.addEventListener('click', handleDraw);
+    drawDeckEl.addEventListener('click', handleDraw);
+
+    passBtn.addEventListener('click', () => {
+        if (!G.active || G.currentIdx !== 0) return;
+        passBtn.classList.add('hidden');
+        G.drewThisTurn = false;
+        addLog('Pas geçtin.');
+        nextTurn();
+    });
+
+    unoBtn.addEventListener('click', () => {
+        G.players[0].calledUno = true;
+        addLog('UNO dedin! ✓');
+        unoBtn.classList.add('hidden');
+    });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  OYUN BAŞLATMA
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function initGame() {
+        // State sıfırla
+        G.deck = []; G.discardPile = []; G.players = [];
+        G.currentIdx = 0; G.direction = 1; G.active = false;
+        G.logs = []; G.drewThisTurn = false; G.pendingPlay = null;
+
+        buildDeck();
+        shuffleDeck();
+
+        for (let i = 0; i < G.numPlayers; i++) {
+            G.players.push({ id: i, isHuman: i === 0, name: i === 0 ? 'Sen' : `Bot ${i}`, hand: [], calledUno: false });
+        }
+
+        // 7'şer kart dağıt
+        for (let r = 0; r < 7; r++) {
+            for (let p = 0; p < G.numPlayers; p++) {
+                G.players[p].hand.push(G.deck.pop());
+            }
+        }
+
+        // İlk kart: aksiyon/siyah olamaz
+        // BUG FIX: type yerine value kontrolü yapılıyor
+        let first = G.deck.pop();
+        while (first.color === 'black' || ['skip','reverse','draw2'].includes(first.value)) {
+            G.deck.unshift(first);
+            first = G.deck.pop();
+        }
+        G.discardPile.push(first);
+        G.currentColor = first.color;
+        G.active = true;
+
+        addLog(`Oyun başladı! İlk kart: ${COLOR_TR[first.color]} ${first.value}`);
+        updateUI();
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  DESTE OLUŞTURMA
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function buildDeck() {
+        let id = 0;
+        COLORS.forEach(color => {
+            G.deck.push({ id: id++, color, value: '0' });
+            for (let n = 1; n <= 9; n++) {
+                G.deck.push({ id: id++, color, value: String(n) });
+                G.deck.push({ id: id++, color, value: String(n) });
+            }
+            ['skip','reverse','draw2'].forEach(v => {
+                G.deck.push({ id: id++, color, value: v });
+                G.deck.push({ id: id++, color, value: v });
+            });
+        });
+        for (let i = 0; i < 4; i++) {
+            G.deck.push({ id: id++, color: 'black', value: 'wild' });
+            G.deck.push({ id: id++, color: 'black', value: 'wild4' });
+        }
+    }
+
+    function shuffleDeck() {
+        for (let i = G.deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [G.deck[i], G.deck[j]] = [G.deck[j], G.deck[i]];
+        }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  KURAL: GEÇERLİ HAMLEMİ KONTROL ET
+    //  BUG FIX: Siyah kart üstüne value karşılaştırması kaldırıldı,
+    //           sadece renk veya value eşleşmesi yeterli
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function isValid(card) {
+        if (card.color === 'black') return true;
+        if (card.color === G.currentColor) return true;
+        const top = G.discardPile[G.discardPile.length - 1];
+        // value eşleşmesi sadece renkli kartlar için geçerli
+        if (top.color !== 'black' && card.value === top.value) return true;
+        return false;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  KART OYNAMA
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function attemptPlay(playerIndex, cardIndex) {
+        const card = G.players[playerIndex].hand[cardIndex];
+        if (!isValid(card)) return;
+
+        if (card.color === 'black') {
+            G.pendingPlay = { playerIndex, cardIndex };
+            colorModal.classList.remove('hidden');
+        } else {
+            playCard(playerIndex, cardIndex);
+        }
+    }
+
+    function playCard(playerIndex, cardIndex, chosenColor = null) {
+        const player = G.players[playerIndex];
+        const card   = player.hand[cardIndex];
+
+        // Elden çıkar
+        player.hand.splice(cardIndex, 1);
+        G.discardPile.push(card);
+        G.drewThisTurn = false;
+        passBtn.classList.add('hidden');
+
+        // Renk güncelle
+        if (card.color === 'black' && chosenColor) {
+            G.currentColor = chosenColor;
+            addLog(`${player.name} → 🎨 Rengi ${COLOR_TR[chosenColor]} yaptı.`);
+        } else if (card.color !== 'black') {
+            G.currentColor = card.color;
+            addLog(`${player.name} → ${COLOR_TR[card.color]} ${SYMBOL[card.value] || card.value}`);
+        }
+
+        // BUG FIX: UNO ceza — kart atıldıktan SONRA kontrol et (1 kart kaldıysa)
+        if (player.isHuman && player.hand.length === 1 && !player.calledUno) {
+            addLog('⚠️ UNO demeyi unuttun! +2 ceza kartı.');
+            drawCards(0, 2);
+        }
+
+        // Efektler
+        let skip = 1;
+        if (card.value === 'skip') {
+            skip = 2;
+            addLog(`⊘ Sıradaki oyuncu atlandı!`);
+        } else if (card.value === 'reverse') {
+            G.direction *= -1;
+            addLog(`⇄ Yön değiştirildi!`);
+            if (G.numPlayers === 2) skip = 2; // 2 kişide reverse = skip
+        } else if (card.value === 'draw2') {
+            const nx = nextIdx(1);
+            drawCards(nx, 2);
+            skip = 2;
+            addLog(`${G.players[nx].name} +2 kart çekti ve turunu kaybetti.`);
+        } else if (card.value === 'wild4') {
+            const nx = nextIdx(1);
+            drawCards(nx, 4);
+            skip = 2;
+            addLog(`${G.players[nx].name} +4 kart çekti ve turunu kaybetti!`);
+        }
+
+        // Kazanma
+        if (player.hand.length === 0) {
+            endGame(player);
+            return;
+        }
+
+        nextTurn(skip);
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  KART ÇEKME (YARDIMCI)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function drawCards(playerIndex, count) {
+        for (let i = 0; i < count; i++) {
+            if (G.deck.length === 0) reshuffleDiscard();
+            if (G.deck.length > 0) G.players[playerIndex].hand.push(G.deck.pop());
+        }
+        G.players[playerIndex].calledUno = false;
+    }
+
+    function reshuffleDiscard() {
+        if (G.discardPile.length <= 1) return;
+        const top = G.discardPile.pop();
+        G.deck = [...G.discardPile];
+        G.discardPile = [top];
+        shuffleDeck();
+        addLog('Deste bitti, atılan kartlar karıştırıldı.');
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  SIRA YÖNETİMİ
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function nextIdx(skip = 1) {
+        let n = (G.currentIdx + G.direction * skip) % G.numPlayers;
+        if (n < 0) n += G.numPlayers;
+        return n;
+    }
+
+    function nextTurn(skip = 1) {
+        G.currentIdx = nextIdx(skip);
+        G.drewThisTurn = false;
+        updateUI();
+        if (G.currentIdx !== 0 && G.active) {
+            const botName = G.players[G.currentIdx].name;
+            aiThinkingName.textContent = `${botName} düşünüyor...`;
+            aiThinking.classList.remove('hidden');
+            setTimeout(() => {
+                aiThinking.classList.add('hidden');
+                playBot();
+            }, BOT_DELAY);
+        }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  BOT YAPAY ZEKASI
+    //  BUG FIX: UNO kontrolü hand.length === 2 → hand.length === 2
+    //           (2 kartı varken 1'ini atacak, o anda UNO demeli)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function playBot() {
+        if (!G.active) return;
+        const bot = G.players[G.currentIdx];
+
+        const playable = bot.hand
+            .map((c, i) => ({ c, i }))
+            .filter(({ c }) => isValid(c))
+            // Siyahları sona sakla (taktiksel)
+            .sort((a, b) => (a.c.color === 'black' ? 1 : 0) - (b.c.color === 'black' ? 1 : 0));
+
+        if (playable.length > 0) {
+            const { c, i } = playable[0];
+
+            // BUG FIX: 2 kart varken 1'ini atacak → UNO demeli
+            if (bot.hand.length === 2) {
+                bot.calledUno = true;
+                addLog(`${bot.name} UNO dedi!`);
+            }
+
+            if (c.color === 'black') {
+                playCard(G.currentIdx, i, bestColorForBot(bot.hand));
+            } else {
+                playCard(G.currentIdx, i);
+            }
+        } else {
+            drawCards(G.currentIdx, 1);
+            addLog(`${bot.name} yerden kart çekti.`);
+            nextTurn();
+        }
+    }
+
+    function bestColorForBot(hand) {
+        const cnt = { red:0, blue:0, green:0, yellow:0 };
+        hand.forEach(c => { if (c.color !== 'black') cnt[c.color]++; });
+        return Object.entries(cnt).sort((a,b) => b[1]-a[1])[0][0];
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  OYUN SONU
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function endGame(winner) {
+        G.active = false;
+        const isHuman = winner.isHuman;
+
+        $('winner-emoji').textContent = isHuman ? '🏆' : '😔';
+        $('winner-text').textContent  = isHuman ? 'Kazandınız!' : `${winner.name} Kazandı!`;
+        $('winner-text').className    = `font-display text-5xl mb-2 ${isHuman ? 'text-green-400' : 'text-red-400'}`;
+        $('winner-subtext').textContent = isHuman
+            ? 'Tüm kartlardan başarıyla kurtuldunuz. Harika oyun!'
+            : 'Maalesef rakibiniz önce bitirdi. Bir daha dene!';
+
+        gameOverScreen.classList.remove('hidden');
+        if (isHuman) spawnConfetti();
+    }
+
+    function spawnConfetti() {
+        const container = $('confetti-container');
+        const confColors = ['#E23E36','#005A9E','#3C9142','#F8DA1C','#fff'];
+        for (let i = 0; i < 40; i++) {
+            const div = document.createElement('div');
+            div.className = 'confetti-piece';
+            div.style.cssText = `
+                left: ${Math.random()*100}%;
+                top:  ${Math.random()*40}%;
+                background: ${confColors[Math.floor(Math.random()*confColors.length)]};
+                animation-delay: ${Math.random()*1.2}s;
+                animation-duration: ${1.2 + Math.random()*0.8}s;
+                transform: rotate(${Math.random()*360}deg);
+            `;
+            container.appendChild(div);
+        }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  ARAYÜZ GÜNCELLEME
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function updateUI() {
+        renderDiscard();
+        renderHand();
+        renderOpponents();
+        renderStatus();
+        deckCount.textContent = G.deck.length;
+    }
+
+    function renderDiscard() {
+        const top = G.discardPile[G.discardPile.length - 1];
+        if (!top) return;
+
+        const displayColor = top.color === 'black' ? G.currentColor : top.color;
+        const sym = SYMBOL[top.value] || top.value;
+
+        discardEl.className = `w-20 h-28 md:w-28 md:h-40 ${COLOR_CLASS[displayColor]} rounded-xl border-[3px] border-white/70 shadow-2xl flex flex-col items-center justify-center relative transition-all duration-300 card-played`;
+
+        discardEl.innerHTML = `
+            <div class="absolute top-2 left-2 text-xs md:text-base font-black">${sym}</div>
+            <div class="card-oval w-12 h-16 md:w-16 md:h-22">
+                <span class="text-3xl md:text-5xl font-black drop-shadow">${sym}</span>
+            </div>
+            <div class="absolute bottom-2 right-2 text-xs md:text-base font-black rotate-180">${sym}</div>
+        `;
+    }
+
+    function renderHand() {
+        const human = G.players[0];
+        const isMyTurn = G.currentIdx === 0 && G.active;
+
+        $('player-card-count').textContent = human.hand.length;
+
+        // Sıra rozeti ve avatar parlaması
+        if (isMyTurn) {
+            humanTurnBadge.classList.remove('hidden');
+            humanAvatar.classList.add('active-glow');
+        } else {
+            humanTurnBadge.classList.add('hidden');
+            humanAvatar.classList.remove('active-glow');
+        }
+
+        // UNO butonu: 1 veya 2 kart kaldıysa ve demediyse göster
+        if ((human.hand.length <= 2) && !human.calledUno && G.active) {
+            unoBtn.classList.remove('hidden');
+        } else {
+            unoBtn.classList.add('hidden');
+        }
+
+        playerHandEl.innerHTML = '';
+        human.hand.forEach((card, idx) => {
+            const canPlay = isMyTurn && isValid(card) && !G.pendingPlay && !G.drewThisTurn;
+            // BUG FIX: Eğer kart çektikten sonra çekilen kart oynanabilir ise sadece o kart oynanabilir
+            const justDrewAndThisIsIt = isMyTurn && G.drewThisTurn && idx === human.hand.length - 1 && isValid(card);
+            const actuallyPlayable = justDrewAndThisIsIt || (!G.drewThisTurn && canPlay);
+
+            const sym = SYMBOL[card.value] || card.value;
+            const div = document.createElement('div');
+
+            div.className = [
+                'flex-shrink-0 card-overlap',
+                'w-20 h-28 md:w-28 md:h-40',
+                'rounded-xl border-4 border-white/70 shadow-xl',
+                'flex flex-col items-center justify-center relative',
+                COLOR_CLASS[card.color],
+                actuallyPlayable ? 'card-playable' : 'card-disabled'
+            ].join(' ');
+
+            div.innerHTML = `
+                <div class="absolute top-1.5 left-2 text-xs md:text-sm font-black">${sym}</div>
+                <div class="card-oval w-10 h-14 md:w-14 md:h-20">
+                    <span class="text-2xl md:text-4xl font-black drop-shadow">${sym}</span>
+                </div>
+                <div class="absolute bottom-1.5 right-2 text-xs md:text-sm font-black rotate-180">${sym}</div>
+            `;
+
+            if (actuallyPlayable) {
+                div.addEventListener('click', () => attemptPlay(0, idx));
+            }
+
+            playerHandEl.appendChild(div);
+        });
+    }
+
+    function renderOpponents() {
+        const positions = { 2: [null,'top',null], 3: ['left',null,'right'], 4: ['left','top','right'] };
+        const pos = positions[G.numPlayers];
+
+        ['pos-top','pos-left','pos-right'].forEach(id => $( id).innerHTML = '');
+
+        G.players.slice(1).forEach((p, i) => {
+            const posName = pos[i];
+            if (!posName) return;
+
+            const isActive = G.currentIdx === p.id;
+            const isVertical = posName === 'left' || posName === 'right';
+
+            const avatarBg = AVATAR_CLASS[p.id] || 'bg-stone-600';
+            const glowClass = isActive ? 'active-glow scale-110' : 'opacity-80';
+
+            // Kapalı kartlar (max 8 göster)
+            const showN = Math.min(p.hand.length, 8);
+            let cardsHtml = `<div class="flex ${isVertical ? 'flex-col -space-y-4' : '-space-x-3'} mt-1">`;
+            for (let k = 0; k < showN; k++) {
+                cardsHtml += `<div class="w-5 h-7 md:w-7 md:h-10 c-black rounded border border-white/40 flex items-center justify-center text-red-400 font-black text-[6px] md:text-[8px] italic shadow">U</div>`;
+            }
+            cardsHtml += '</div>';
+
+            const html = `
+                <div class="flex flex-col items-center gap-1 transition-all">
+                    <div class="relative">
+                        <div class="w-12 h-12 md:w-14 md:h-14 rounded-full ${avatarBg} text-white flex items-center justify-center text-base md:text-lg font-black border-2 border-white/70 transition-all ${glowClass}">
+                            ${p.name.charAt(0)}${p.id}
+                        </div>
+                        ${p.hand.length === 1 ? '<div class="absolute -top-2 -right-2 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-bounce shadow">UNO</div>' : ''}
+                    </div>
+                    <div class="bg-black/60 px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1.5">
+                        <span class="text-xs font-semibold text-stone-200">${p.name}</span>
+                        <span class="text-xs font-black text-yellow-400">${p.hand.length}</span>
+                    </div>
+                    ${cardsHtml}
+                </div>
+            `;
+
+            $(`pos-${posName}`).innerHTML = html;
+        });
+    }
+
+    function renderStatus() {
+        const dot = $('color-dot');
+        dot.className = `w-6 h-6 rounded-full border-2 border-white shadow ${COLOR_CLASS[G.currentColor] || 'bg-stone-500'}`;
+        $('color-name').textContent = COLOR_TR[G.currentColor] || '—';
+
+        const arrow = $('direction-arrow');
+        const txt   = $('direction-text');
+        if (G.direction === 1) {
+            arrow.textContent = '↻';
+            arrow.className = 'text-xl spin-cw inline-block';
+            txt.textContent = 'Saat Yönü';
+        } else {
+            arrow.textContent = '↺';
+            arrow.className = 'text-xl spin-ccw inline-block text-blue-300';
+            txt.textContent = 'Ters Yön';
+        }
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  LOG
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    function addLog(msg) {
+        G.logs.push(msg);
+        if (G.logs.length > 8) G.logs.shift();
+        const inner = document.createElement('div');
+        actionLog.innerHTML = '<p class="text-[10px] text-stone-400 uppercase tracking-wider font-bold mb-2">Hamle Geçmişi</p>'
+            + G.logs.map((l, i) => `<div class="log-entry ${i === G.logs.length-1 ? 'last' : ''}">${l}</div>`).join('');
+        actionLog.scrollTop = actionLog.scrollHeight;
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kawai CX-101 Piyano Eğitmeni</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <h1>🎹 Kawai CX-101 Piyano Eğitmeni</h1>
+            <div class="connection-status">
+                <span id="midi-status" class="status offline">MIDI: Bağlı değil</span>
+                <span id="mic-status" class="status offline">Mikrofon: Kapalı</span>
+            </div>
+        </header>
+
+        <!-- Waterfall Canvas -->
+        <div class="waterfall-container">
+            <canvas id="waterfall"></canvas>
+            <div class="waterfall-overlay">
+                <div id="current-note" class="current-note">Hazır</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="input-mode">
+                <h3>Giriş Yöntemi</h3>
+                <button id="btn-midi" class="btn btn-primary">
+                    🎹 MIDI ile Bağlan
+                </button>
+                <button id="btn-mic" class="btn btn-secondary">
+                    🎤 Mikrofon ile Dinle
+                </button>
+            </div>
+
+            <div class="song-select">
+                <h3>Şarkı Seç</h3>
+                <select id="song-select">
+                    <option value="">-- Şarkı Seçin --</option>
+                    <option value="twinkle">Twinkle Twinkle Little Star</option>
+                    <option value="ode-to-joy">Ode to Joy</option>
+                    <option value="fur-elise">Für Elise</option>
+                </select>
+                <button id="btn-start" class="btn btn-success" disabled>▶ Başla</button>
+                <button id="btn-stop" class="btn btn-danger" disabled>■ Dur</button>
+            </div>
+        </div>
+
+        <!-- Feedback -->
+        <div id="feedback" class="feedback hidden">
+            <span id="feedback-icon"></span>
+            <span id="feedback-text"></span>
+        </div>
+
+        <!-- Virtual Keyboard -->
+        <div class="keyboard-container">
+            <div id="virtual-keyboard" class="virtual-keyboard"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat">
+                <span class="stat-label">Doğru</span>
+                <span id="correct-count" class="stat-value correct">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Yanlış</span>
+                <span id="wrong-count" class="stat-value wrong">0</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">Doğruluk</span>
+                <span id="accuracy" class="stat-value">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/pitchy.min.js"></script>
+    <script src="js/midi.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/engine.js"></script>
+    <script src="js/waterfall.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
